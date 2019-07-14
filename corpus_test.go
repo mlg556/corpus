@@ -134,7 +134,7 @@ func TestVector_DistSq(t *testing.T) {
 
 	res := 2.0
 
-	if a.Dist(b) != res {
+	if a.DistSq(b) != res {
 		t.Error("WRONG !!")
 	}
 }
@@ -182,7 +182,7 @@ func TestVector_MagSq(t *testing.T) {
 	a := Vector{3, 4}
 	res := 25.0
 
-	if a.Mag() != res {
+	if a.MagSq() != res {
 		t.Error("WRONG!!")
 	}
 }
