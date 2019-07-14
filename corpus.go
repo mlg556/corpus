@@ -34,7 +34,7 @@ func MakeCorpus(posX, posY, velX, velY, rad float64) Corpus {
 	return c
 }
 
-// Checks if two corpi are intersected.
+// IsInter checks if two corpi intersect each other.
 func (c Corpus) IsInter(cp Corpus) bool {
 	return c.Pos.Dist(cp.Pos) < c.Radius+cp.Radius
 }
