@@ -117,6 +117,28 @@ func TestVector_AngleBetween(t *testing.T) {
 	}
 }
 
+func TestVector_Dist(t *testing.T) {
+	a := Vector{1, 0}
+	b := Vector{0, 1}
+
+	res := math.Sqrt(2)
+
+	if a.Dist(b)-res > 0.001 {
+		t.Error("WRONG !!")
+	}
+}
+
+func TestVector_DistSq(t *testing.T) {
+	a := Vector{1, 0}
+	b := Vector{0, 1}
+
+	res := 2.0
+
+	if a.Dist(b) != res {
+		t.Error("WRONG !!")
+	}
+}
+
 func TestVector_Div(t *testing.T) {
 	a := Vector{2, 2}
 	res := Vector{1, 1}
@@ -150,6 +172,15 @@ func TestVector_Dot(t *testing.T) {
 func TestVector_Mag(t *testing.T) {
 	a := Vector{3, 4}
 	res := 5.0
+
+	if a.Mag() != res {
+		t.Error("WRONG!!")
+	}
+}
+
+func TestVector_MagSq(t *testing.T) {
+	a := Vector{3, 4}
+	res := 25.0
 
 	if a.Mag() != res {
 		t.Error("WRONG!!")
@@ -193,6 +224,25 @@ func TestVector_NormP(t *testing.T) {
 	res := Vector{1, 0}
 
 	a.NormP()
+
+	if a != res {
+		t.Error("WRONG !!")
+	}
+}
+
+func TestVector_SetMag(t *testing.T) {
+	a := Vector{10, 0}
+	res := Vector{5, 0}
+
+	if a.SetMag(5) != res {
+		t.Error("WRONG !!")
+	}
+}
+
+func TestVector_SetMagP(t *testing.T) {
+	a := Vector{10, 0}
+	res := Vector{5, 0}
+	a.SetMagP(5)
 
 	if a != res {
 		t.Error("WRONG !!")
