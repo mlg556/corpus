@@ -9,10 +9,12 @@ import (
 )
 
 // Corpus is a 2D physical disk with vectors for position, velocity
-// acceleration, scalars for mass and radius.
+// acceleration, scalars for mass and radius and a boolean Immaterial
+// for things simply to be drawn.
 type Corpus struct {
 	Pos, Vel, Acc Vector
 	Mass, Radius  float64
+	Immaterial    bool
 }
 
 // Vector is a 2D vector with x and y components of type float64.
@@ -22,7 +24,7 @@ type Vector struct {
 
 // MakeCorpus initialises and returns a Corpus with
 // given Pos, Vel and Rad all in float64 forms.
-// Mass is Rad squared, Acc is 0, 0.
+// Mass is Rad squared, Acc is 0,0 and Immaterial is false.
 func MakeCorpus(posX, posY, velX, velY, rad float64) Corpus {
 	c := Corpus{}
 	c.Pos = Vector{X: posX, Y: posY}
@@ -30,6 +32,7 @@ func MakeCorpus(posX, posY, velX, velY, rad float64) Corpus {
 	c.Radius = rad
 	c.Mass = rad * rad
 	c.Acc = Vector{0, 0}
+	c.Immaterial = false
 
 	return c
 }
@@ -72,33 +75,57 @@ func (c *Corpus) Bounce(width, height float64) {
 	}
 }
 
-// Collides collides the given corpus with the given corpi in the slice.
+// Collide collides the given corpus with the given corpi in the slice.
 // Mutates velocities to preserve momentum and kinetic energy.
 // Also prevents intersections by directly mutating positions.
 func (c *Corpus) Collide(corpi []Corpus) {
 	for idx := range corpi {
 		cp := &corpi[idx]
-		dist := c.Pos.Dist(cp.Pos)
-		// There is a collision.
-		if c.IsInter(cp) {
-			// Intersection
-			displace := c.Pos.Sub(cp.Pos).SetMag((c.Radius + cp.Radius - dist) / 2)
-			c.Pos.AddP(displace)
-			cp.Pos.AddP(displace.Mult(-1))
 
-			// Momentum
-			cVelP := c.Vel.Sub(c.Pos.Sub(cp.Pos).Mult((2 * cp.Mass / (c.Mass + cp.Mass)) * c.Vel.Sub(cp.Vel).Dot(c.Pos.Sub(cp.Pos)) / c.Pos.DistSq(cp.Pos)))
-			cp.Vel = cp.Vel.Sub(cp.Pos.Sub(c.Pos).Mult((2 * c.Mass / (c.Mass + cp.Mass)) * cp.Vel.Sub(c.Vel).Dot(cp.Pos.Sub(c.Pos)) / c.Pos.DistSq(cp.Pos)))
-			c.Vel = cVelP
+		if !c.Immaterial && !cp.Immaterial {
+			dist := c.Pos.Dist(cp.Pos)
+			// There is a collision.
+			if c.IsInter(cp) {
+				// Intersection
+				displace := c.Pos.Sub(cp.Pos).SetMag((c.Radius + cp.Radius - dist) / 2)
+				c.Pos.AddP(displace)
+				cp.Pos.AddP(displace.Mult(-1))
+
+				// Momentum
+				cVelP := c.Vel.Sub(c.Pos.Sub(cp.Pos).Mult((2 * cp.Mass / (c.Mass + cp.Mass)) * c.Vel.Sub(cp.Vel).Dot(c.Pos.Sub(cp.Pos)) / c.Pos.DistSq(cp.Pos)))
+				cp.Vel = cp.Vel.Sub(cp.Pos.Sub(c.Pos).Mult((2 * c.Mass / (c.Mass + cp.Mass)) * cp.Vel.Sub(c.Vel).Dot(cp.Pos.Sub(c.Pos)) / c.Pos.DistSq(cp.Pos)))
+				c.Vel = cVelP
+			}
+		}
+	}
+}
+
+// Gravitate calculates and applies the gravitational force
+// between the given corpus and all of the rest corpi.
+func (c *Corpus) Gravitate(corpi []Corpus, G float64) {
+	for idx := range corpi {
+		cp := &corpi[idx]
+
+		if !c.Immaterial && !cp.Immaterial {
+			dist := c.Pos.Dist(cp.Pos)
+
+			if dist+2 >= c.Radius+cp.Radius {
+				force := cp.Pos.Sub(c.Pos).Mult(G * c.Mass * cp.Mass / (dist * dist)).Div(dist)
+
+				c.ApplyForce(force)
+				cp.ApplyForce(force.Mult(-1))
+			}
 		}
 	}
 }
 
 // Update updates the given corpus by mutating its physical attributes as unit time passes.
 func (c *Corpus) Update() {
-	c.Vel.AddP(c.Acc) // a = dv/dt
-	c.Pos.AddP(c.Vel) // v = dx/dt
-	c.Acc.MultP(0)    // resets acceleration
+	if !c.Immaterial {
+		c.Vel.AddP(c.Acc) // a = dv/dt
+		c.Pos.AddP(c.Vel) // v = dx/dt
+		c.Acc.MultP(0)    // resets acceleration
+	}
 }
 
 // Add adds two vectors, returning a new vector.
