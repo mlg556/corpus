@@ -35,8 +35,8 @@ func MakeCorpus(posX, posY, velX, velY, rad float64) Corpus {
 }
 
 // IsInter checks if two corpi intersect each other.
-func (c Corpus) IsInter(cp Corpus) bool {
-	return c.Pos.Dist(cp.Pos) < c.Radius+cp.Radius
+func (c Corpus) IsInter(cp *Corpus) bool {
+	return c.Pos.Dist(cp.Pos) <= c.Radius+cp.Radius
 }
 
 // ApplyForce subjects the corpus to the given force by mutating its acceleration.
@@ -76,9 +76,9 @@ func (c *Corpus) Bounce(width, height float64) {
 // Mutates velocities to preserve momentum and kinetic energy.
 // Also prevents intersections by directly mutating positions.
 func (c *Corpus) Collide(corpi []Corpus) {
-	for _, cp := range corpi {
+	for idx := range corpi {
+		cp := &corpi[idx]
 		dist := c.Pos.Dist(cp.Pos)
-
 		// There is a collision.
 		if c.IsInter(cp) {
 			// Intersection
@@ -87,13 +87,9 @@ func (c *Corpus) Collide(corpi []Corpus) {
 			cp.Pos.AddP(displace.Mult(-1))
 
 			// Momentum
-			x1Minx2 := c.Pos.Sub(cp.Pos)
-			c.Vel.SubP(x1Minx2.Mult((c.Vel.Sub(cp.Vel).Dot(x1Minx2) /
-				x1Minx2.MagSq()) * ((2 * cp.Mass) / (c.Mass + cp.Mass))))
-
-			x2Minx1 := x1Minx2.Mult(-1)
-			cp.Vel.SubP(x2Minx1.Mult((cp.Vel.Sub(c.Vel).Dot(x2Minx1) /
-				x2Minx1.MagSq()) * ((2 * c.Mass) / (c.Mass + cp.Mass))))
+			cVelP := c.Vel.Sub(c.Pos.Sub(cp.Pos).Mult((2 * cp.Mass / (c.Mass + cp.Mass)) * c.Vel.Sub(cp.Vel).Dot(c.Pos.Sub(cp.Pos)) / c.Pos.DistSq(cp.Pos)))
+			cp.Vel = cp.Vel.Sub(cp.Pos.Sub(c.Pos).Mult((2 * c.Mass / (c.Mass + cp.Mass)) * cp.Vel.Sub(c.Vel).Dot(cp.Pos.Sub(c.Pos)) / c.Pos.DistSq(cp.Pos)))
+			c.Vel = cVelP
 		}
 	}
 }

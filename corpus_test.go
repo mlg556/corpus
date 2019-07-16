@@ -57,17 +57,19 @@ func TestCorpus_ApplyForce(t *testing.T) {
 func TestCorpus_Update(t *testing.T) {
 	pos := Vector{0, 0}
 	vel := Vector{1, 1}
-	acc := Vector{1, 1}
+	acc := Vector{0, 0}
 
 	mass := 1.0
 	radius := 1.0
 
 	c := Corpus{pos, vel, acc, mass, radius}
-	c.Update()
 
-	resPos := Vector{2, 2}
-	resVel := Vector{2, 2}
-	resAcc := Vector{0, 0}
+	for i := 0; i < 10; i++ {
+		c.Update()
+	}
+
+	resPos := Vector{10, 10}
+	resVel := Vector{1, 1}
 
 	if c.Pos != resPos {
 		t.Error("WRONG POS!!")
@@ -77,9 +79,6 @@ func TestCorpus_Update(t *testing.T) {
 		t.Error("WRONG VEL")
 	}
 
-	if c.Acc != resAcc {
-		t.Error("WRONG ACC")
-	}
 }
 
 func TestVector_Add(t *testing.T) {
@@ -262,9 +261,9 @@ func TestVector_Sub(t *testing.T) {
 
 func TestVector_SubP(t *testing.T) {
 	a := Vector{3, 4}
-	b := Vector{1, 2}
+	b := Vector{10, 10}
 
-	res := Vector{2, 2}
+	res := Vector{-7, -6}
 
 	a.SubP(b)
 
