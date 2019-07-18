@@ -12,9 +12,9 @@ import (
 // acceleration, scalars for mass and radius and a boolean Immaterial
 // for things simply to be drawn.
 type Corpus struct {
-	Pos, Vel, Acc Vector
-	Mass, Radius  float64
-	Immaterial    bool
+	Pos, Vel, Acc        Vector
+	Mass, Charge, Radius float64
+	Immaterial           bool
 }
 
 // Vector is a 2D vector with x and y components of type float64.
@@ -25,12 +25,13 @@ type Vector struct {
 // MakeCorpus initialises and returns a Corpus with
 // given Pos, Vel and Rad all in float64 forms.
 // By default, Acc is 0,0 and Immaterial is false.
-func MakeCorpus(posX, posY, velX, velY, mass, rad float64) Corpus {
+func MakeCorpus(posX, posY, velX, velY, mass, charge, rad float64) Corpus {
 	c := Corpus{}
 	c.Pos = Vector{X: posX, Y: posY}
 	c.Vel = Vector{X: velX, Y: velY}
-	c.Radius = rad
 	c.Mass = mass
+	c.Charge = charge
+	c.Radius = rad
 	c.Acc = Vector{0, 0}
 	c.Immaterial = false
 
@@ -43,6 +44,7 @@ func (c Corpus) IsInter(cp *Corpus) bool {
 }
 
 // ApplyForce subjects the corpus to the given force by mutating its acceleration.
+// By Newton's 2nd law "F = m*a".
 func (c *Corpus) ApplyForce(f Vector) {
 	c.Acc.AddP(f.Div(c.Mass)) // a = F/m
 }
@@ -58,17 +60,14 @@ func (c *Corpus) Bounce(width, height float64) {
 		c.Pos.X = width - rad
 		c.Vel.X = -c.Vel.X
 	}
-
 	if posX < rad {
 		c.Pos.X = rad
 		c.Vel.X = -c.Vel.X
 	}
-
 	if posY > height-rad {
 		c.Pos.Y = height - rad
 		c.Vel.Y = -c.Vel.Y
 	}
-
 	if posY < rad {
 		c.Pos.Y = rad
 		c.Vel.Y = -c.Vel.Y
@@ -78,10 +77,12 @@ func (c *Corpus) Bounce(width, height float64) {
 // Collide collides the given corpus with the given corpi in the slice.
 // Mutates velocities to preserve momentum and kinetic energy.
 // Also prevents intersections by directly mutating positions.
+// Solving the equation for a 2D elastic collision yields:
+// v1' = v1 - (2*m2/(m1+m2)) * (<v1-v2, x1-x2>)/(||x1-x2||^2) * (x1-x2)
+// v2' = v2 - (2*m1/(m1+m2)) * (<v2-v1, x2-x1>)/(||x2-x1||^2) * (x2-x1)
 func (c *Corpus) Collide(corpi []Corpus) {
 	for idx := range corpi {
 		cp := &corpi[idx]
-
 		if !c.Immaterial && !cp.Immaterial {
 			dist := c.Pos.Dist(cp.Pos)
 			// There is a collision.
@@ -90,7 +91,6 @@ func (c *Corpus) Collide(corpi []Corpus) {
 				displace := c.Pos.Sub(cp.Pos).SetMag((c.Radius + cp.Radius - dist) / 2)
 				c.Pos.AddP(displace)
 				cp.Pos.AddP(displace.Mult(-1))
-
 				// Momentum
 				cVelP := c.Vel.Sub(c.Pos.Sub(cp.Pos).Mult((2 * cp.Mass / (c.Mass + cp.Mass)) * c.Vel.Sub(cp.Vel).Dot(c.Pos.Sub(cp.Pos)) / c.Pos.DistSq(cp.Pos)))
 				cp.Vel = cp.Vel.Sub(cp.Pos.Sub(c.Pos).Mult((2 * c.Mass / (c.Mass + cp.Mass)) * cp.Vel.Sub(c.Vel).Dot(cp.Pos.Sub(c.Pos)) / c.Pos.DistSq(cp.Pos)))
@@ -102,18 +102,35 @@ func (c *Corpus) Collide(corpi []Corpus) {
 
 // Gravitate calculates and applies the gravitational force
 // between the given corpus and all of the rest corpi.
+// Using Newton's law of universal gravitation:
+// F = G*m1*m2/r^2
 func (c *Corpus) Gravitate(corpi []Corpus, G float64) {
 	for idx := range corpi {
 		cp := &corpi[idx]
-
 		if !c.Immaterial && !cp.Immaterial {
 			dist := c.Pos.Dist(cp.Pos)
-
 			if dist+2 >= c.Radius+cp.Radius {
 				force := cp.Pos.Sub(c.Pos).Mult(G * c.Mass * cp.Mass / (dist * dist)).Div(dist)
-
 				c.ApplyForce(force)
 				cp.ApplyForce(force.Mult(-1))
+			}
+		}
+	}
+}
+
+// Coulomb calculates and applies the electrostatic force
+// between the given corpus and all of the rest corpi.
+// Using Coulomb's law:
+// F = k*q1*q2/r^2
+func (c *Corpus) Coulomb(corpi []Corpus, k float64) {
+	for idx := range corpi {
+		cp := &corpi[idx]
+		if !c.Immaterial && !cp.Immaterial {
+			dist := c.Pos.Dist(cp.Pos)
+			if dist+2 >= c.Radius+cp.Radius {
+				force := cp.Pos.Sub(c.Pos).Mult(1 * c.Charge * cp.Charge / (dist * dist)).Div(dist)
+				c.ApplyForce(force.Mult(-1))
+				cp.ApplyForce(force)
 			}
 		}
 	}
@@ -212,12 +229,12 @@ func (a *Vector) SetMagP(mag float64) {
 	a.MultP(mag)
 }
 
-// Sub substracts a from b, returning a new vector.
+// Sub subtracts a from b, returning a new vector.
 func (a Vector) Sub(b Vector) Vector {
 	return Vector{a.X - b.X, a.Y - b.Y}
 }
 
-// SubP substracts a from b in place.
+// SubP subtracts a from b in place.
 func (a *Vector) SubP(b Vector) {
 	a.X = a.X - b.X
 	a.Y = a.Y - b.Y
