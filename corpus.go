@@ -24,13 +24,13 @@ type Vector struct {
 
 // MakeCorpus initialises and returns a Corpus with
 // given Pos, Vel and Rad all in float64 forms.
-// Mass is Rad squared, Acc is 0,0 and Immaterial is false.
-func MakeCorpus(posX, posY, velX, velY, rad float64) Corpus {
+// By default, Acc is 0,0 and Immaterial is false.
+func MakeCorpus(posX, posY, velX, velY, mass, rad float64) Corpus {
 	c := Corpus{}
 	c.Pos = Vector{X: posX, Y: posY}
 	c.Vel = Vector{X: velX, Y: velY}
 	c.Radius = rad
-	c.Mass = rad * rad
+	c.Mass = mass
 	c.Acc = Vector{0, 0}
 	c.Immaterial = false
 
@@ -86,7 +86,7 @@ func (c *Corpus) Collide(corpi []Corpus) {
 			dist := c.Pos.Dist(cp.Pos)
 			// There is a collision.
 			if c.IsInter(cp) {
-				// Intersection
+				//Intersection
 				displace := c.Pos.Sub(cp.Pos).SetMag((c.Radius + cp.Radius - dist) / 2)
 				c.Pos.AddP(displace)
 				cp.Pos.AddP(displace.Mult(-1))
