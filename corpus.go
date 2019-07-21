@@ -50,28 +50,35 @@ func (c *Corpus) ApplyForce(f Vector) {
 }
 
 // Bounce bounces the corpus off windows boundaries given by width and height.
+// Returns the number of collisions with the boundaries, 0 if none.
 // Also prevents intersections by directly mutating position.
-func (c *Corpus) Bounce(width, height float64) {
+func (c *Corpus) Bounce(width, height float64) int {
 	posX := c.Pos.X
 	posY := c.Pos.Y
 	rad := c.Radius
+	collisions := 0
 
 	if posX > width-rad {
 		c.Pos.X = width - rad
 		c.Vel.X = -c.Vel.X
+		collisions += 1
 	}
 	if posX < rad {
 		c.Pos.X = rad
 		c.Vel.X = -c.Vel.X
+		collisions += 1
 	}
 	if posY > height-rad {
 		c.Pos.Y = height - rad
 		c.Vel.Y = -c.Vel.Y
+		collisions += 1
 	}
 	if posY < rad {
 		c.Pos.Y = rad
 		c.Vel.Y = -c.Vel.Y
+		collisions += 1
 	}
+	return collisions
 }
 
 // Collide collides the given corpus with the given corpi in the slice.
@@ -100,6 +107,24 @@ func (c *Corpus) Collide(corpi []Corpus) {
 	}
 }
 
+// Coulomb calculates and applies the electrostatic force
+// between the given corpus and all of the rest corpi.
+// Using Coulomb's law:
+// F = k*q1*q2/r^2
+func (c *Corpus) Coulomb(corpi []Corpus, k float64) {
+	for idx := range corpi {
+		cp := &corpi[idx]
+		if !c.Immaterial && !cp.Immaterial {
+			dist := c.Pos.Dist(cp.Pos)
+			if dist+2 >= c.Radius+cp.Radius {
+				force := cp.Pos.Sub(c.Pos).Mult(1 * c.Charge * cp.Charge / (dist * dist)).Div(dist)
+				c.ApplyForce(force.Mult(-1))
+				cp.ApplyForce(force)
+			}
+		}
+	}
+}
+
 // Gravitate calculates and applies the gravitational force
 // between the given corpus and all of the rest corpi.
 // Using Newton's law of universal gravitation:
@@ -118,22 +143,25 @@ func (c *Corpus) Gravitate(corpi []Corpus, G float64) {
 	}
 }
 
-// Coulomb calculates and applies the electrostatic force
-// between the given corpus and all of the rest corpi.
-// Using Coulomb's law:
-// F = k*q1*q2/r^2
-func (c *Corpus) Coulomb(corpi []Corpus, k float64) {
-	for idx := range corpi {
-		cp := &corpi[idx]
-		if !c.Immaterial && !cp.Immaterial {
-			dist := c.Pos.Dist(cp.Pos)
-			if dist+2 >= c.Radius+cp.Radius {
-				force := cp.Pos.Sub(c.Pos).Mult(1 * c.Charge * cp.Charge / (dist * dist)).Div(dist)
-				c.ApplyForce(force.Mult(-1))
-				cp.ApplyForce(force)
-			}
-		}
+// Instead of bouncing off the window boundaries, Pacman makes the particle
+// reappear on the opposite border.
+func (c *Corpus) Pacman(width, height float64) {
+	xPos := c.Pos.X
+	yPos := c.Pos.Y
+
+	if xPos < 0 {
+		c.Pos.X = xPos + width
 	}
+	if yPos < 0 {
+		c.Pos.Y = yPos + height
+	}
+	if xPos > width {
+		c.Pos.X = math.Mod(xPos, width)
+	}
+	if yPos > height {
+		c.Pos.Y = math.Mod(yPos, height)
+	}
+
 }
 
 // Update updates the given corpus by mutating its physical attributes as unit time passes.
